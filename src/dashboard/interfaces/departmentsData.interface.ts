@@ -1,3 +1,0 @@
-interface DepartmentsData {
-  departments: Department[];
-}

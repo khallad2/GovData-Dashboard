@@ -1,5 +1,5 @@
 // Define the structure of the departments.json data
-interface Department {
+export interface Department {
   name: string;
-  subordinates?: { name: string }[];
+  subordinates?: Department[];
 }

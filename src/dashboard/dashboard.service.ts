@@ -1,30 +1,74 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import axios from 'axios';
+import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import axios, { AxiosError } from 'axios';
 import * as querystring from 'querystring';
 import { ConfigService } from '@nestjs/config';
+import { GovDataResult } from './interfaces/result.interface';
+import { Department } from './interfaces/department.interface';
 
 @Injectable()
 export class DashboardService {
   private readonly govDataApiUrl: string;
   private readonly departmentsJsonUrl: string;
+  private readonly logger = new Logger(DashboardService.name);
 
   constructor(private configService: ConfigService) {
-    // Load URLs from environment variables
     this.govDataApiUrl = this.configService.get<string>('GOVDATA_API_URL');
     this.departmentsJsonUrl = this.configService.get<string>(
       'DEPARTMENTS_JSON_URL',
     );
+
+    axios.interceptors.response.use(
+      (response) => response,
+      (error: AxiosError) => {
+        this.logger.error(`Request failed: ${error.message}`);
+        return Promise.reject(error);
+      },
+    );
   }
 
-  // Fetch departments.json from the GitHub URL
-  async fetchDepartmentsData(): Promise<any> {
+  private async retryRequest<T>(
+    requestFn: () => Promise<T>,
+    retries: number,
+    delay: number,
+    isRetryable: (error: any) => boolean,
+  ): Promise<T> {
     try {
-      const response = await axios.get(this.departmentsJsonUrl, {
-        timeout: 1000,
-      }); // Set time out to 10 seconds to make sure data is loaded
+      return await requestFn();
+    } catch (error) {
+      if (retries === 0 || !isRetryable(error)) {
+        this.logger.error(
+          `Max retries reached or non-retryable error occurred: ${error.message}`,
+        );
+        throw new HttpException(
+          'Failed to fetch external data after retries',
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
+      this.logger.warn(`Retrying request. Attempts left: ${retries}`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return this.retryRequest(requestFn, retries - 1, delay * 2, isRetryable);
+    }
+  }
+
+  async fetchDepartmentsData(): Promise<Department[]> {
+    this.logger.log(
+      `Fetching departments data from ${this.departmentsJsonUrl}`,
+    );
+    try {
+      const response = await this.retryRequest(
+        () => axios.get<{ departments: Department[] }>(this.departmentsJsonUrl),
+        this.configService.get<number>('REQUEST_RETRY') || 3,
+        this.configService.get<number>('REQUEST_TIMEOUT') || 1000,
+        (error) =>
+          error.isAxiosError &&
+          (!error.response || error.response.status >= 500), // Retry only on network errors
+      );
       return response.data.departments;
     } catch (error) {
-      console.error('Error fetching departments.json:', error.message);
+      this.logger.error(
+        `Error fetching departments.json: ${error.message}`,
+        error.stack,
+      );
       throw new HttpException(
         'Failed to load departments.json',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -32,15 +76,29 @@ export class DashboardService {
     }
   }
 
-  // Fetch datasets for a specific ministry from the GovData API
   async fetchMinistryDatasetCount(ministryName: string): Promise<number> {
+    // Input validation (basic validation, can be improved)
+    if (!ministryName || typeof ministryName !== 'string') {
+      this.logger.warn(`Invalid ministry name: ${ministryName}`);
+      return 0;
+    }
+
     try {
-      // URL encode the ministry name
       const query = querystring.stringify({ q: ministryName });
-      const response = await axios.get(`${this.govDataApiUrl}?${query}`);
+      this.logger.log(`Fetching dataset count for ministry: ${ministryName}`);
+      const response = await this.retryRequest(
+        () => axios.get<GovDataResult>(`${this.govDataApiUrl}?${query}`),
+        this.configService.get<number>('REQUEST_RETRY') || 3, // Retry 3 times for ministry dataset fetching
+        this.configService.get<number>('REQUEST_TIMEOUT') || 10000,
+        (error) =>
+          error.isAxiosError &&
+          (!error.response || error.response.status >= 500), // Retry only on network issues
+      );
       return response.data.result.count || 0;
     } catch (error) {
-      console.error(`Error fetching data for ${ministryName}:`, error.message);
+      this.logger.error(
+        `Error fetching data for ${ministryName}: ${error.message}`,
+      );
       return 0;
     }
   }
