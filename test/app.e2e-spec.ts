@@ -6,7 +6,6 @@ import { DashboardService } from '../src/dashboard/dashboard.service';
 import { Response } from 'express';
 import { join } from 'path';
 import { AppController } from '../src/app.controller';
-import { AppService } from '../src/app.service';
 
 describe('DashboardController (e2e)', () => {
   let app: INestApplication;
@@ -23,7 +22,6 @@ describe('DashboardController (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
       controllers: [AppController],
-      providers: [AppService],
     }).compile();
 
     app = moduleFixture.createNestApplication();
