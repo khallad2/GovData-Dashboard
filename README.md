@@ -1,85 +1,173 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# GovData Dashboard API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A NestJS-powered API that provides dashboard data by aggregating datasets from multiple ministries. This project is structured to ensure performance, security, and scalability. It uses Axios for HTTP requests, and Joi and ConfigService for environment configuration validation.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Table of Contents
+1. [Project Overview](#project-overview)
+2. [Features](#features)
+3. [Getting Started](#getting-started)
+4. [Configuration](#configuration)
+5. [Running the Project](#running-the-project)
+6. [Testing](#testing)
+7. [API Documentation](#api-documentation)
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Project Overview
 
-## Project setup
+GovData Dashboard is an API that fetches and aggregates datasets from various governmental ministries. It interacts with external APIs and processes large amounts of data while providing robust error handling and retry logic to ensure reliability.
+
+---
+
+## Features
+
+- **Data Aggregation**: Gathers and aggregates datasets from multiple ministries.
+- **Retry Mechanism**: Handles network issues with retry logic to increase reliability.
+- **Caching**: Caches results to avoid redundant API calls.
+- **ValidationPipe**: For automatically validating incoming requests.
+  **Graceful Shutdown**: Handles application termination gracefully to prevent data corruption.
+- **Configuration Validation**: Uses Joi to ensure required environment variables are set.
+- **API Prefixing and Global Validation**: Supports global API prefixes and request validation using NestJS validation pipes.
+- **Unit Testing with coverage 100%**: Includes unit tests for services, controllers, and critical paths.
+
+---
+
+## Getting Started
+
+Follow these instructions to get the project up and running.
+
+### Prerequisites
+
+You’ll need the following installed on your machine:
+
+- **Node.js** (v14 or later)
+- **npm** or **yarn**
+- **Docker** (Optional, but recommended for running services like databases or third-party APIs)
+
+### Clone the repository:
 
 ```bash
-$ npm install
+git clone https://github.com/your-username/govdata-dashboard.git
+cd govdata-dashboard
 ```
-
-## Compile and run the project
+### Install dependencies:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
+# or
+yarn install
 ```
 
-## Run tests
+### Configuration
+- The project uses environment variables for configuration. Copy the .env.example to .env and fill out the required values.
+```bash
+cp .env.example .env
+```
+
+
+## Required Environment Variables
+- **GOVDATA_API_URL**: The base URL for the external GovData API.
+- **DEPARTMENTS_JSON_URL**: URL of the departments JSON file.
+
+### Example `.env` file:
+```bash
+GOVDATA_API_URL=https://api.govdata.example
+DEPARTMENTS_JSON_URL=https://github.example/departments.json
+```
+
+---
+
+## Running the Project
+
+### Development Mode
+
+To start the project in development mode, run the following command:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run start:dev
+# or
+yarn start:dev
 ```
 
-## Resources
+### Production Mode
 
-Check out a few resources that may come in handy when working with NestJS:
+To start the project in production mode:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+npm run build
+npm run start:prod
+# or
+yarn build
+yarn start:prod
+```
 
-## Support
+### Running with Docker
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+If you prefer Docker, you can use the following commands to build and run the project:
 
-## Stay in touch
+```bash
+docker build -t govdata-dashboard .
+docker run -p 3000:3000 govdata-dashboard
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+The application will be running on `http://localhost:3000`.
 
-## License
+---
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## Testing
+
+The project includes a test suite that covers both unit tests and integration tests.
+
+### Running Unit Tests
+
+```bash
+npm run test
+# or
+yarn test
+```
+
+### Running Test Coverage
+
+To get detailed test coverage, run:
+
+```bash
+npm run test:cov
+# or
+yarn test:cov
+```
+
+This will provide a detailed report of how much of the codebase is covered by tests.
+
+---
+
+## API Documentation
+
+### Endpoints
+
+- **GET /dashboard**: Fetches aggregated dataset counts for ministries and their subordinates.
+
+### Response Example:
+```json
+[
+  {
+    "name": "Ministry A",
+    "count": 100
+  },
+  {
+    "name": "Ministry B",
+    "count": 200
+  }
+]
+```
+
+### Error Responses:
+- **400 Bad Request**: Invalid request format or parameters.
+- **500 Internal Server Error**: An error occurred during data processing or API fetching.
+
+
+### If I have more time:
+- handle large datasets efficiently
+- implement rate-limiting for requests: which would further protect against potential DoS attacks, 
+    especially if this service were exposed to the public.
+- Caching can be made more sophisticated with a TTL (Time To Live) to avoid stale data for ministries that might update frequently.
+- In the retry logic, increasing the delay exponentially on each retry could make the system more resilient to network outages, but there is a risk of delaying too much.
