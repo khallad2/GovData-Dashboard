@@ -16,7 +16,6 @@ describe('Main Bootstrap', () => {
     useGlobalPipes: jest.Mock;
     listen: jest.Mock;
     enableCors: jest.Mock;
-    setGlobalPrefix: jest.Mock;
     enableShutdownHooks: jest.Mock;
   };
 
@@ -27,7 +26,6 @@ describe('Main Bootstrap', () => {
       useGlobalPipes: jest.fn(),
       listen: jest.fn().mockResolvedValueOnce(true),
       enableCors: jest.fn(),
-      setGlobalPrefix: jest.fn(),
       enableShutdownHooks: jest.fn(),
     };
 
@@ -50,10 +48,6 @@ describe('Main Bootstrap', () => {
 
   it('should set the global validation pipe', () => {
     expect(app.useGlobalPipes).toHaveBeenCalledWith(expect.any(ValidationPipe));
-  });
-
-  it('should set the global API prefix', () => {
-    expect(app.setGlobalPrefix).toHaveBeenCalledWith('api');
   });
 
   it('should enable shutdown hooks', () => {

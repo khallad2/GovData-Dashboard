@@ -4,10 +4,15 @@ import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { DashboardService } from '../src/dashboard/dashboard.service';
 import { Response } from 'express';
+import { join } from 'path';
+import { AppController } from '../src/app.controller';
+import { AppService } from '../src/app.service';
 
 describe('DashboardController (e2e)', () => {
   let app: INestApplication;
   let dashboardService: DashboardService;
+  let appController: AppController;
+  let mockRes: Partial<Response>;
 
   const mockDashboardData = [
     { name: 'Ministry A', count: 100 },
@@ -17,25 +22,37 @@ describe('DashboardController (e2e)', () => {
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
+      controllers: [AppController],
+      providers: [AppService],
     }).compile();
 
     app = moduleFixture.createNestApplication();
     dashboardService = moduleFixture.get<DashboardService>(DashboardService);
+    appController = app.get<AppController>(AppController);
     await app.init();
+    // Mock the Express Response object
+    mockRes = {
+      sendFile: jest.fn(), // Mock the sendFile method
+    };
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(HttpStatus.OK)
-      .expect('Hello World!');
+  describe('/ (GET)', () => {
+    it('should serve the index.html file', () => {
+      // Call the getHello method with the mocked response
+      appController.getHello(mockRes as Response);
+
+      // Expect sendFile to have been called with the correct path
+      expect(mockRes.sendFile).toHaveBeenCalledWith(
+        join(__dirname, '..', 'public', 'index.html'),
+      );
+    });
   });
 
-  describe('/dashboard (GET)', () => {
+  describe('/api/dashboard (GET)', () => {
     it('should stream dashboard data successfully', async () => {
       jest
         .spyOn(dashboardService, 'streamDashboardData')
@@ -51,7 +68,7 @@ describe('DashboardController (e2e)', () => {
         });
 
       return request(app.getHttpServer())
-        .get('/dashboard')
+        .get('/api/dashboard')
         .expect(HttpStatus.OK)
         .expect('Content-Type', /json/)
         .expect((res) => {
@@ -67,7 +84,7 @@ describe('DashboardController (e2e)', () => {
         });
 
       return request(app.getHttpServer())
-        .get('/dashboard')
+        .get('/api/dashboard')
         .expect(HttpStatus.INTERNAL_SERVER_ERROR)
         .expect({
           statusCode: 500,
@@ -85,7 +102,7 @@ describe('DashboardController (e2e)', () => {
         });
 
       return request(app.getHttpServer())
-        .get('/dashboard')
+        .get('/api/dashboard')
         .expect(HttpStatus.OK)
         .expect('Content-Type', /json/)
         .expect([]);

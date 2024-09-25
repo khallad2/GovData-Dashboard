@@ -9,7 +9,7 @@ import {
 import { DashboardService } from './dashboard.service';
 import { Response } from 'express';
 
-@Controller('dashboard')
+@Controller('/api/dashboard')
 export class DashboardController {
   private readonly logger = new Logger(DashboardController.name);
 

@@ -17,7 +17,7 @@ export async function bootstrap() {
   );
 
   // Global route prefix (e.g., /api/your-route)
-  app.setGlobalPrefix('api');
+  // app.setGlobalPrefix('api');
 
   // Enable graceful shutdown hooks
   app.enableShutdownHooks();
