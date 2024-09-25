@@ -4,8 +4,10 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  Res,
 } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
+import { Response } from 'express';
 
 @Controller('dashboard')
 export class DashboardController {
@@ -15,39 +17,33 @@ export class DashboardController {
 
   /**
    * GET /dashboard
-   * Fetches and returns the aggregated dashboard data from the DashboardService.
+   * Streams the aggregated dashboard data from the DashboardService.
    * Applies proper error handling and logging for better observability.
-   * @returns Aggregated dashboard data or an error response.
+   * @param res - Express Response object used for streaming.
+   * @returns void (response is streamed directly via Express).
    */
   @Get()
-  async getDashboardData(): Promise<any> {
-    this.logger.log('Fetching dashboard data');
+  async getDashboardData(@Res() res: Response): Promise<void> {
+    this.logger.log('Fetching and streaming dashboard data');
 
     try {
-      // Fetch data from the service
-      const data = await this.dashboardService.getDashboardData();
+      // Call the streaming method and pass the response object
+      await this.dashboardService.streamDashboardData(res);
 
-      // Check if data is available and return it, otherwise return 204 No Content
-      if (!data || data.length === 0) {
-        this.logger.warn('No dashboard data found');
-        return { message: 'No dashboard data available' }; // 204 or a custom message
-      }
-
-      this.logger.log('Successfully fetched dashboard data');
-      return { success: true, data }; // Ensure a consistent response structure
+      // Since the data is streamed, no need to return anything from the controller
     } catch (error) {
       this.logger.error(
-        `Error fetching dashboard data: ${error.message}`,
+        `Error streaming dashboard data: ${error.message}`,
         error.stack,
       );
 
-      // Handling service errors and sending appropriate HTTP response
+      // Handle service errors and send appropriate HTTP response
       if (error instanceof HttpException) {
         throw error; // Re-throw any known HttpException
       } else {
         // For unexpected errors, return an Internal Server Error
         throw new HttpException(
-          'Internal Server Error while fetching dashboard data',
+          'Internal Server Error while streaming dashboard data',
           HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }

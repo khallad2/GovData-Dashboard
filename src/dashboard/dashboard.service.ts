@@ -1,4 +1,5 @@
 import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { Response } from 'express'; // Import the Response object from 'express'
 import axios, { AxiosError } from 'axios';
 import * as querystring from 'querystring';
 import { ConfigService } from '@nestjs/config';
@@ -187,45 +188,80 @@ export class DashboardService {
   }
 
   /**
-   * Aggregates dashboard data by fetching ministry and subordinate dataset counts.
-   * @returns A promise that resolves to an array of ministry names and their respective dataset counts.
+   * Stream ministry and subordinate dataset counts as they are processed.
+   * @param res - The Express response object used for streaming.
+   * @throws HttpException if any issues occur during data fetching.
    */
-  async getDashboardData(): Promise<Array<{ name: string; count: number }>> {
-    const departments = await this.fetchDepartmentsData(); // Fetch the list of departments
-    const ministryData: Array<{ name: string; count: number }> = [];
+  async streamDashboardData(res: Response): Promise<any> {
+    try {
+      // Fetch the list of departments from the external source
+      const departments = await this.fetchDepartmentsData();
 
-    for (const department of departments) {
-      const ministryName = department.name;
-      // Fetch dataset count for each ministry
-      let datasetCount =
-        (await this.fetchMinistryDatasetCount(ministryName)) ?? 0;
+      // Initialize an empty array to store ministry data (name and dataset count)
+      const ministryData: Array<{ name: string; count: number }> = [];
 
-      // Check if there are subordinates and fetch their dataset counts
-      if (department.subordinates) {
-        const subordinateCounts = await Promise.all(
-          department.subordinates.map(async (subordinate) => {
-            try {
-              return await this.fetchMinistryDatasetCount(subordinate.name); // Fetch subordinate dataset count
-            } catch (error) {
-              this.logger.error(
-                `Failed to fetch data for subordinate ${subordinate.name}: ${error.message}`, // Log any errors fetching subordinate data
-              );
-              return 0; // Return 0 if fetching fails for any subordinate
-            }
-          }),
-        );
-        // Sum up the subordinate dataset counts with the ministry's dataset count
-        datasetCount += subordinateCounts.reduce(
-          (acc, count) => acc + count,
-          0,
-        );
+      // Iterate over each department to fetch the ministry data
+      for (const department of departments) {
+        const ministryName = department.name; // Extract the ministry name from the department
+        let datasetCount =
+          (await this.fetchMinistryDatasetCount(ministryName)) ?? 0; // Fetch dataset count for the ministry and fallback to 0 if undefined
+
+        // If the ministry has subordinates, fetch their dataset counts
+        if (department.subordinates) {
+          // Fetch dataset counts for all subordinates in parallel
+          const subordinateCounts = await Promise.all(
+            department.subordinates.map(async (subordinate) => {
+              try {
+                // Fetch dataset count for each subordinate
+                return await this.fetchMinistryDatasetCount(subordinate.name);
+              } catch (error) {
+                // Log an error if there's an issue fetching subordinate data
+                this.logger.error(
+                  `Failed to fetch data for subordinate ${subordinate.name}: ${error.message}`,
+                );
+                return 0; // Return 0 for the subordinate if an error occurs
+              }
+            }),
+          );
+          // Add the subordinate dataset counts to the ministry's dataset count
+          datasetCount += subordinateCounts.reduce(
+            (acc, count) => acc + count,
+            0, // Start with 0 and accumulate counts
+          );
+        }
+
+        // Push the ministry name and its dataset count into the ministryData array
+        ministryData.push({ name: ministryName, count: datasetCount });
       }
 
-      // Store the ministry and its total dataset count
-      ministryData.push({ name: ministryName, count: datasetCount });
-    }
+      // Sort the ministry data in descending order by dataset count
+      ministryData.sort((a, b) => b.count - a.count);
 
-    // Sort the ministries by dataset count in descending order
-    return ministryData.sort((a, b) => b.count - a.count);
+      // Set the response header to indicate that the content is JSON
+      res.setHeader('Content-Type', 'application/json');
+      res.write('['); // Start the JSON array in the response
+
+      let first = true; // A flag to track if it's the first ministry being written
+      for (const ministry of ministryData) {
+        if (!first) {
+          res.write(','); // Add a comma between ministries, except before the first one
+        }
+        first = false; // Mark that the first ministry has been written
+
+        // Write the ministry data as a JSON object into the response stream
+        res.write(JSON.stringify(ministry));
+
+        // Flush headers to ensure the data is sent progressively (non-blocking)
+        res.flushHeaders();
+      }
+
+      res.write(']'); // End the JSON array in the response
+      res.end(); // Close the connection after sending the entire response
+    } catch (error) {
+      // Log any error that occurs during the data streaming process
+      this.logger.error(`Error while streaming data: ${error.message}`);
+      // Respond with a 500 status code and an error message in case of failure
+      res.status(500).send('Error while streaming data');
+    }
   }
 }

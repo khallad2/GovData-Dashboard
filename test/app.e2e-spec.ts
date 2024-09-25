@@ -3,18 +3,11 @@ import { INestApplication, HttpStatus } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { DashboardService } from '../src/dashboard/dashboard.service';
+import { Response } from 'express';
 
 describe('DashboardController (e2e)', () => {
   let app: INestApplication;
   let dashboardService: DashboardService;
-
-  const mockDashboardResponse = {
-    success: true,
-    data: [
-      { name: 'Ministry A', count: 100 },
-      { name: 'Ministry B', count: 200 },
-    ],
-  };
 
   const mockDashboardData = [
     { name: 'Ministry A', count: 100 },
@@ -42,41 +35,60 @@ describe('DashboardController (e2e)', () => {
       .expect('Hello World!');
   });
 
-  describe('/api/dashboard (GET)', () => {
-    it('should return dashboard data successfully', () => {
+  describe('/dashboard (GET)', () => {
+    it('should stream dashboard data successfully', async () => {
       jest
-        .spyOn(dashboardService, 'getDashboardData')
-        .mockResolvedValueOnce(mockDashboardData);
+        .spyOn(dashboardService, 'streamDashboardData')
+        .mockImplementationOnce(async (res: Response) => {
+          // Simulating how streamDashboardData behaves when streaming data
+          res.setHeader('Content-Type', 'application/json');
+          res.write('[');
+          res.write(JSON.stringify(mockDashboardData[0]));
+          res.write(',');
+          res.write(JSON.stringify(mockDashboardData[1]));
+          res.write(']');
+          res.end();
+        });
 
       return request(app.getHttpServer())
         .get('/dashboard')
         .expect(HttpStatus.OK)
-        .expect(mockDashboardResponse);
+        .expect('Content-Type', /json/)
+        .expect((res) => {
+          expect(res.text).toEqual(JSON.stringify(mockDashboardData));
+        });
     });
 
-    it('should return a 500 error if dashboard service fails', () => {
+    it('should return a 500 error if dashboard service fails during streaming', async () => {
       jest
-        .spyOn(dashboardService, 'getDashboardData')
-        .mockRejectedValueOnce(new Error('Internal Server Error'));
+        .spyOn(dashboardService, 'streamDashboardData')
+        .mockImplementationOnce(async (res: Response) => {
+          throw new Error(`Internal Server Error: ${res}`);
+        });
 
       return request(app.getHttpServer())
         .get('/dashboard')
         .expect(HttpStatus.INTERNAL_SERVER_ERROR)
         .expect({
           statusCode: 500,
-          message: 'Internal Server Error while fetching dashboard data',
+          message: 'Internal Server Error while streaming dashboard data',
         });
     });
 
-    it('should return empty array if no data is available', () => {
+    it('should return an empty array if no data is available', async () => {
       jest
-        .spyOn(dashboardService, 'getDashboardData')
-        .mockResolvedValueOnce([]);
+        .spyOn(dashboardService, 'streamDashboardData')
+        .mockImplementationOnce(async (res: Response) => {
+          res.setHeader('Content-Type', 'application/json');
+          res.write('[]');
+          res.end();
+        });
 
       return request(app.getHttpServer())
         .get('/dashboard')
         .expect(HttpStatus.OK)
-        .expect({ message: 'No dashboard data available' });
+        .expect('Content-Type', /json/)
+        .expect([]);
     });
   });
 });

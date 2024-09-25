@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { AxiosRequestHeaders } from 'axios';
 import { Department } from './interfaces/department.interface';
 import { GovDataResult } from './interfaces/result.interface';
+import { Response } from 'express'; // Import the Response object from 'express'
 
 jest.mock('axios');
 
@@ -112,6 +113,7 @@ describe('DashboardService', () => {
       headers: {},
       config: { headers: {} as AxiosRequestHeaders }, // Include 'config' object with 'headers'
     };
+
     it('should fetch dataset count for a ministry and cache the result', async () => {
       mockAxiosInstance.get.mockResolvedValueOnce(axiosResponse);
 
@@ -169,54 +171,70 @@ describe('DashboardService', () => {
     });
   });
 
-  describe('getDashboardData', () => {
-    it('should aggregate dataset counts for ministries and subordinates', async () => {
+  describe('streamDashboardData', () => {
+    let mockRes: Partial<Response>;
+
+    beforeEach(() => {
+      // Mock the Response object
+      mockRes = {
+        setHeader: jest.fn(),
+        write: jest.fn(),
+        end: jest.fn(),
+        flushHeaders: jest.fn(),
+        status: jest.fn().mockReturnThis(), // Allow chainable status setting
+        send: jest.fn(),
+      };
+    });
+
+    it('should stream dashboard data successfully', async () => {
       const departments: Department[] = [
         { name: 'Ministry A', subordinates: [{ name: 'Subordinate A1' }] },
       ];
 
-      const axiosResponse: AxiosResponse = {
-        data: { departments },
-        status: 200,
-        statusText: 'OK',
-        headers: {},
-        config: { headers: {} as AxiosRequestHeaders },
-      };
-
-      mockAxiosInstance.get.mockResolvedValueOnce(axiosResponse);
+      // Mocking the data fetching methods
+      jest
+        .spyOn(service, 'fetchDepartmentsData')
+        .mockResolvedValueOnce(departments);
       jest
         .spyOn(service, 'fetchMinistryDatasetCount')
         .mockResolvedValueOnce(10)
         .mockResolvedValueOnce(5);
 
-      const result = await service.getDashboardData();
-      expect(result).toEqual([{ name: 'Ministry A', count: 15 }]);
-      expect(mockAxiosInstance.get).toHaveBeenCalledTimes(1);
-      expect(service.fetchMinistryDatasetCount).toHaveBeenCalledTimes(2);
+      await service.streamDashboardData(mockRes as Response);
+
+      // Verify the response behavior
+      expect(mockRes.setHeader).toHaveBeenCalledWith(
+        'Content-Type',
+        'application/json',
+      );
+      expect(mockRes.write).toHaveBeenCalledWith('[');
+      expect(mockRes.write).toHaveBeenCalledWith(
+        '{"name":"Ministry A","count":15}',
+      );
+      expect(mockRes.write).toHaveBeenCalledWith(']');
+      expect(mockRes.end).toHaveBeenCalled();
+      expect(mockRes.flushHeaders).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle errors for subordinates and continue processing', async () => {
-      const departments: Department[] = [
-        { name: 'Ministry A', subordinates: [{ name: 'Subordinate A1' }] },
-      ];
+    it('should handle errors during data streaming', async () => {
+      const error = new Error('Test Error');
+      jest.spyOn(service, 'fetchDepartmentsData').mockRejectedValueOnce(error);
 
-      const axiosResponse: AxiosResponse = {
-        data: { departments },
-        status: 200,
-        statusText: 'OK',
-        headers: {},
-        config: { headers: {} as AxiosRequestHeaders },
-      };
+      await service.streamDashboardData(mockRes as Response);
 
-      mockAxiosInstance.get.mockResolvedValueOnce(axiosResponse);
-      jest
-        .spyOn(service, 'fetchMinistryDatasetCount')
-        .mockResolvedValueOnce(10)
-        .mockRejectedValueOnce(new Error('Subordinate Error'));
+      // Check that the error is handled correctly
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.send).toHaveBeenCalledWith('Error while streaming data');
+    });
 
-      const result = await service.getDashboardData();
-      expect(result).toEqual([{ name: 'Ministry A', count: 10 }]);
-      expect(service.fetchMinistryDatasetCount).toHaveBeenCalledTimes(2);
+    it('should handle empty departments and return an empty array', async () => {
+      jest.spyOn(service, 'fetchDepartmentsData').mockResolvedValueOnce([]);
+
+      await service.streamDashboardData(mockRes as Response);
+
+      expect(mockRes.write).toHaveBeenCalledWith('[');
+      expect(mockRes.write).toHaveBeenCalledWith(']');
+      expect(mockRes.end).toHaveBeenCalled();
     });
   });
 
@@ -259,6 +277,57 @@ describe('DashboardService', () => {
       expect(() =>
         service['handleHttpError'](axiosError, 'Test Context'),
       ).toThrow(HttpException);
+    });
+  });
+
+  describe('streamDashboardData additional edge cases', () => {
+    let mockRes: Partial<Response>;
+
+    beforeEach(() => {
+      mockRes = {
+        setHeader: jest.fn(),
+        write: jest.fn(),
+        end: jest.fn(),
+        flushHeaders: jest.fn(),
+        status: jest.fn().mockReturnThis(), // Allow chainable status setting
+        send: jest.fn(),
+      };
+    });
+
+    it('should stream empty data if no departments are returned', async () => {
+      jest.spyOn(service, 'fetchDepartmentsData').mockResolvedValueOnce([]);
+
+      await service.streamDashboardData(mockRes as Response);
+
+      // Check if response sends empty array
+      expect(mockRes.write).toHaveBeenCalledWith('[');
+      expect(mockRes.write).toHaveBeenCalledWith(']');
+      expect(mockRes.end).toHaveBeenCalled();
+    });
+
+    it('should handle large datasets without crashing', async () => {
+      const largeDepartments: Department[] = Array.from(
+        { length: 1000 },
+        (_, i) => ({
+          name: `Ministry ${i}`,
+          subordinates: [],
+        }),
+      );
+
+      jest
+        .spyOn(service, 'fetchDepartmentsData')
+        .mockResolvedValueOnce(largeDepartments);
+      jest.spyOn(service, 'fetchMinistryDatasetCount').mockResolvedValue(100);
+
+      await service.streamDashboardData(mockRes as Response);
+
+      // Verify that the stream processed the large dataset
+      expect(mockRes.write).toHaveBeenCalledWith('[');
+      expect(mockRes.write).toHaveBeenCalledWith(
+        expect.stringContaining('Ministry 999'),
+      );
+      expect(mockRes.write).toHaveBeenCalledWith(']');
+      expect(mockRes.end).toHaveBeenCalled();
     });
   });
 });
