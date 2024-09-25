@@ -7,7 +7,7 @@ import { Response } from 'express';
 import { join } from 'path';
 import { AppController } from '../src/app.controller';
 
-describe('DashboardController (e2e)', () => {
+describe('Ministries Dashboard (e2e)', () => {
   let app: INestApplication;
   let dashboardService: DashboardService;
   let appController: AppController;

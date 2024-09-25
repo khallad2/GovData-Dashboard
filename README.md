@@ -13,17 +13,44 @@ A NestJS-powered API that provides dashboard data by aggregating datasets from m
 
 ---
 
-## Project Overview
+# Project Overview
 
-GovData Dashboard is an API that fetches and aggregates datasets from various governmental ministries. 
-It interacts with external APIs and processes large amounts of data while providing robust error handling 
+GovData Dashboard is an API that fetches and aggregates datasets from various governmental ministries.
+It interacts with external APIs and processes large amounts of data while providing robust error handling
 and retry logic to ensure reliability.
+
+## API Request Approach for Fetching Ministries Data
+
+### Initially 
+
+I aimed to send a single request to fetch data for multiple ministries and their subordinates by sending multiple query parameters in the request URL.
+For example, we attempted the following API call with two ministries: `https://demo.ckan.org/api/3/action/package_search?q=Bundesamt%20f%C3%BCr%20Justiz&q=Deutsches%20Patent-%20und%20Markenamt`
+However, this approach consistently returned 0 results.
+After some investigation, we found that CKAN’s `package_search` API does not support searching with multiple `q` parameters for different entities in a single request.
+It treats the multiple `q` parameters as a combined search query, resulting in no relevant data being returned.
+
+#### Current Approach
+
+Due to the limitations of batching ministry names in a single API request, we switched to an approach where each ministry and its subordinates are fetched separately in individual requests. 
+This ensures we retrieve accurate data for each entity, as seen in the 
+following example: `https://demo.ckan.org/api/3/action/package_search?q=Bundesamt%20f%C3%BCr%20Justiz`
+In this way, we make individual requests for each ministry and its subordinates, processing the data separately to ensure that the correct results are returned for each entity.
+While this approach requires multiple requests, it provides the most accurate and reliable data retrieval from the CKAN API.
+
+The method `streamDashboardData` in `DashboardService` streams ministry and subordinate dataset counts as they are processed:
+1. The service fetches the data in chunks from external APIs.
+2. It progressively writes JSON objects to the response stream using the Node.js `Response` object from Express.
+3. Each ministry's data is flushed to the client as soon as it is processed, ensuring the data is streamed in real time.
+4. The entire process is non-blocking, ensuring efficient resource usage and fast delivery of data.
 
 ---
 
 ## Features
-
-- **Data Aggregation**: Gathers and aggregates datasets from multiple ministries.
+- **Data Streaming**: Data streaming helps to:
+    - **Reduce Latency**: Clients start receiving data as soon as the first portion is available, improving response times for large datasets.
+    - **Optimize Memory Usage**: Instead of loading the entire dataset into memory, the service processes and streams chunks of data progressively, reducing memory consumption.
+    - **Enhance User Experience**: Especially with large datasets, the client can begin processing the data (e.g., displaying results) while more data is still being fetched, improving the overall user experience.
+- **Data Aggregation**: Gathers and aggregates datasets from multiple ministries and their subordinated agencies.
 - **Retry Mechanism**: Handles network issues with retry logic to increase reliability.
 - **Caching**: Caches results to avoid redundant API calls.
 - **Logging**: Logging for more detailed insights and clean production logs.
@@ -32,6 +59,21 @@ and retry logic to ensure reliability.
 - **Configuration Validation**: Uses Joi to ensure required environment variables are set.
 - **API Prefixing and Global Validation**: Supports global API prefixes and request validation using NestJS validation pipes.
 - **e2e,Unit and integration Testing with coverage 95%**: Includes unit tests for services, controllers, and critical paths, e2e tests.
+
+---
+
+## Ministries Dashboard UI
+
+A simple user interface has been created to display the results from the `/api/dashboard` API. This UI fetches the list of ministries and their respective dataset counts, and presents them in a clean, responsive format. The ministry with the highest count is highlighted in **green**, and the one with the lowest count is highlighted in **red**. A loader is displayed while the data is being fetched.
+
+### How it works:
+- The UI is built with plain HTML and JavaScript.
+- Upon loading, the page sends a request to the `/api/dashboard` endpoint.
+- The response is displayed as cards, each showing a ministry name and its dataset count.
+
+You can view the dashboard by visiting the following URL in your browser:
+
+[http://localhost:3000/](http://localhost:3000/)
 
 ---
 
@@ -104,17 +146,6 @@ yarn build
 yarn start:prod
 ```
 
-### Running with Docker
-
-If you prefer Docker, you can use the following commands to build and run the project:
-
-```bash
-docker build -t govdata-dashboard .
-docker run -p 3000:3000 govdata-dashboard
-```
-
-The application will be running on `http://localhost:3000`.
-
 ---
 
 ## Testing
@@ -141,7 +172,7 @@ yarn test:cov
 
 This will provide a detailed report of how much of the codebase is covered by tests.
 
-### run e2e test 
+### run e2e test
 ```bash
 npm run test:e2e
 #or
@@ -176,8 +207,8 @@ yarn test:e2e
 
 
 ### If I have more time:
-- handle large datasets efficiently
-- implement rate-limiting (throttling)for requests: which would further protect against potential DoS attacks, 
-    especially if this service were exposed to the public.
+- Enhance streamDashboardData function to improve readability, maintainability, performance.
+- Implement rate-limiting (throttling) for requests: which would further protect against potential DoS attacks,
+  especially if this service were exposed to the public.
 - Caching can be made more sophisticated with a TTL (Time To Live) to avoid stale data for ministries that might update frequently.
-- In the retry logic, increasing the delay exponentially on each retry could make the system more resilient to network outages, but there is a risk of delaying too much.
+- Investigate: In the retry logic, increasing the delay exponentially on each retry could make the system more resilient to network outages, but there is a risk of delaying too much.
