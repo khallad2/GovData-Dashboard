@@ -1,3 +1,4 @@
+
 # GovData Dashboard API
 
 A NestJS-powered API that provides dashboard data by aggregating datasets from multiple ministries. This project is structured to ensure performance, security, and scalability. It uses Axios for HTTP requests, and Joi and ConfigService for environment configuration validation.
@@ -21,7 +22,7 @@ and retry logic to ensure reliability.
 
 ## API Request Approach for Fetching Ministries Data
 
-### Initially 
+### Initially
 
 I aimed to send a single request to fetch data for multiple ministries and their subordinates by sending multiple query parameters in the request URL.
 For example, we attempted the following API call with two ministries: `https://demo.ckan.org/api/3/action/package_search?q=Bundesamt%20f%C3%BCr%20Justiz&q=Deutsches%20Patent-%20und%20Markenamt`
@@ -31,8 +32,8 @@ It treats the multiple `q` parameters as a combined search query, resulting in n
 
 #### Current Approach
 
-Due to the limitations of batching ministry names in a single API request, we switched to an approach where each ministry and its subordinates are fetched separately in individual requests. 
-This ensures we retrieve accurate data for each entity, as seen in the 
+Due to the limitations of batching ministry names in a single API request, we switched to an approach where each ministry and its subordinates are fetched separately in individual requests.
+This ensures we retrieve accurate data for each entity, as seen in the
 following example: `https://demo.ckan.org/api/3/action/package_search?q=Bundesamt%20f%C3%BCr%20Justiz`
 In this way, we make individual requests for each ministry and its subordinates, processing the data separately to ensure that the correct results are returned for each entity.
 While this approach requires multiple requests, it provides the most accurate and reliable data retrieval from the CKAN API.
@@ -47,9 +48,9 @@ The method `streamDashboardData` in `DashboardService` streams ministry and subo
 
 ## Features
 - **Data Streaming**: Data streaming helps to:
-    - **Reduce Latency**: Clients start receiving data as soon as the first portion is available, improving response times for large datasets.
-    - **Optimize Memory Usage**: Instead of loading the entire dataset into memory, the service processes and streams chunks of data progressively, reducing memory consumption.
-    - **Enhance User Experience**: Especially with large datasets, the client can begin processing the data (e.g., displaying results) while more data is still being fetched, improving the overall user experience.
+  - **Reduce Latency**: Clients start receiving data as soon as the first portion is available, improving response times for large datasets.
+  - **Optimize Memory Usage**: Instead of loading the entire dataset into memory, the service processes and streams chunks of data progressively, reducing memory consumption.
+  - **Enhance User Experience**: Especially with large datasets, the client can begin processing the data (e.g., displaying results) while more data is still being fetched, improving the overall user experience.
 - **Data Aggregation**: Gathers and aggregates datasets from multiple ministries and their subordinated agencies.
 - **Retry Mechanism**: Handles network issues with retry logic to increase reliability.
 - **Caching**: Caches results to avoid redundant API calls.
@@ -92,7 +93,7 @@ You’ll need the following installed on your machine:
 ### Clone the repository:
 
 ```bash
-git clone https://github.com/your-username/govdata-dashboard.git
+git clone https://github.com/khallad2/GovData-Dashboard.git
 cd govdata-dashboard
 ```
 ### Install dependencies:
@@ -104,17 +105,15 @@ yarn install
 ```
 
 ### Configuration
-- The project uses environment variables for configuration. Copy the .env.example to .env and fill out the required values.
-```bash
-cp .env.example .env
-```
+- The project uses environment variables for configuration. I have provided .env.development with the required values.
+`.env.example.development`
 
 
 ## Required Environment Variables
 - **GOVDATA_API_URL**: The base URL for the external GovData API.
 - **DEPARTMENTS_JSON_URL**: URL of the departments JSON file.
 
-### Example `.env` file:
+### Example `.env.development, .env.production, .env.test` file:
 ```bash
 GOVDATA_API_URL=https://api.govdata.example
 DEPARTMENTS_JSON_URL=https://github.example/departments.json
