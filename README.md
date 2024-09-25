@@ -15,7 +15,9 @@ A NestJS-powered API that provides dashboard data by aggregating datasets from m
 
 ## Project Overview
 
-GovData Dashboard is an API that fetches and aggregates datasets from various governmental ministries. It interacts with external APIs and processes large amounts of data while providing robust error handling and retry logic to ensure reliability.
+GovData Dashboard is an API that fetches and aggregates datasets from various governmental ministries. 
+It interacts with external APIs and processes large amounts of data while providing robust error handling 
+and retry logic to ensure reliability.
 
 ---
 
@@ -24,11 +26,12 @@ GovData Dashboard is an API that fetches and aggregates datasets from various go
 - **Data Aggregation**: Gathers and aggregates datasets from multiple ministries.
 - **Retry Mechanism**: Handles network issues with retry logic to increase reliability.
 - **Caching**: Caches results to avoid redundant API calls.
+- **Logging**: Logging for more detailed insights and clean production logs.
 - **ValidationPipe**: For automatically validating incoming requests.
   **Graceful Shutdown**: Handles application termination gracefully to prevent data corruption.
 - **Configuration Validation**: Uses Joi to ensure required environment variables are set.
 - **API Prefixing and Global Validation**: Supports global API prefixes and request validation using NestJS validation pipes.
-- **Unit Testing with coverage 100%**: Includes unit tests for services, controllers, and critical paths.
+- **e2e,Unit and integration Testing with coverage 95%**: Includes unit tests for services, controllers, and critical paths, e2e tests.
 
 ---
 
@@ -42,7 +45,7 @@ You’ll need the following installed on your machine:
 
 - **Node.js** (v14 or later)
 - **npm** or **yarn**
-- **Docker** (Optional, but recommended for running services like databases or third-party APIs)
+- **Docker** (Optional), for running services like databases or third-party APIs)
 
 ### Clone the repository:
 
@@ -138,6 +141,13 @@ yarn test:cov
 
 This will provide a detailed report of how much of the codebase is covered by tests.
 
+### run e2e test 
+```bash
+npm run test:e2e
+#or
+yarn test:e2e
+```
+
 ---
 
 ## API Documentation
@@ -167,7 +177,7 @@ This will provide a detailed report of how much of the codebase is covered by te
 
 ### If I have more time:
 - handle large datasets efficiently
-- implement rate-limiting for requests: which would further protect against potential DoS attacks, 
+- implement rate-limiting (throttling)for requests: which would further protect against potential DoS attacks, 
     especially if this service were exposed to the public.
 - Caching can be made more sophisticated with a TTL (Time To Live) to avoid stale data for ministries that might update frequently.
 - In the retry logic, increasing the delay exponentially on each retry could make the system more resilient to network outages, but there is a risk of delaying too much.
