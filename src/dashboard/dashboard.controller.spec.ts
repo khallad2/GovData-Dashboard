@@ -2,15 +2,25 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { Response } from 'express';
 
 describe('DashboardController', () => {
   let controller: DashboardController;
+  let mockRes: Partial<Response>;
 
   const mockDashboardService = {
-    getDashboardData: jest.fn(),
+    streamDashboardData: jest.fn(),
   };
 
   beforeEach(async () => {
+    // Create a mock response object
+    mockRes = {
+      setHeader: jest.fn(),
+      write: jest.fn(),
+      end: jest.fn(),
+      status: jest.fn().mockReturnThis(), // Allow status to be chainable
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [DashboardController],
       providers: [
@@ -21,39 +31,53 @@ describe('DashboardController', () => {
     controller = module.get<DashboardController>(DashboardController);
   });
 
-  it('should return dashboard data successfully', async () => {
-    const mockData = [{ name: 'Ministry A', count: 10 }];
-    mockDashboardService.getDashboardData.mockResolvedValue(mockData);
-
-    const result = await controller.getDashboardData();
-    expect(result).toEqual({ success: true, data: mockData });
-    expect(mockDashboardService.getDashboardData).toHaveBeenCalledTimes(1);
+  afterEach(() => {
+    jest.clearAllMocks(); // Clear mocks after each test
   });
 
-  it('should return no dashboard data available if empty', async () => {
-    mockDashboardService.getDashboardData.mockResolvedValue([]);
+  it('should stream dashboard data successfully', async () => {
+    // Mock the service to resolve (not reject)
+    mockDashboardService.streamDashboardData.mockResolvedValueOnce(undefined);
 
-    const result = await controller.getDashboardData();
-    expect(result).toEqual({ message: 'No dashboard data available' });
+    // Call the controller method
+    await controller.getDashboardData(mockRes as Response);
+
+    // Expect the service to have been called
+    expect(mockDashboardService.streamDashboardData).toHaveBeenCalledWith(
+      mockRes,
+    );
   });
 
-  it('should handle HttpException thrown by service', async () => {
+  it('should handle HttpException thrown by the service', async () => {
     const error = new HttpException('Service Error', HttpStatus.BAD_GATEWAY);
-    mockDashboardService.getDashboardData.mockRejectedValueOnce(error);
+    mockDashboardService.streamDashboardData.mockRejectedValueOnce(error);
 
-    await expect(controller.getDashboardData()).rejects.toThrow(HttpException);
+    // Expect the controller to throw the error correctly
+    await expect(
+      controller.getDashboardData(mockRes as Response),
+    ).rejects.toThrow(HttpException);
+
+    expect(mockDashboardService.streamDashboardData).toHaveBeenCalledWith(
+      mockRes,
+    );
   });
 
   it('should handle unexpected errors', async () => {
-    mockDashboardService.getDashboardData.mockRejectedValueOnce(
+    mockDashboardService.streamDashboardData.mockRejectedValueOnce(
       new Error('Unexpected Error'),
     );
 
-    await expect(controller.getDashboardData()).rejects.toThrowError(
+    await expect(
+      controller.getDashboardData(mockRes as Response),
+    ).rejects.toThrowError(
       new HttpException(
-        'Internal Server Error while fetching dashboard data',
+        'Internal Server Error while streaming dashboard data',
         HttpStatus.INTERNAL_SERVER_ERROR,
       ),
+    );
+
+    expect(mockDashboardService.streamDashboardData).toHaveBeenCalledWith(
+      mockRes,
     );
   });
 });
