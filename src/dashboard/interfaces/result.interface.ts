@@ -4,7 +4,7 @@ export interface GovDataResult {
   success: boolean;
   result: {
     count: number;
-    facets: any;
-    results: Array<any>;
+    facets?: any;
+    results?: Array<any>;
   };
 }
