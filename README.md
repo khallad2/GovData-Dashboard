@@ -2,7 +2,7 @@
 # GovData Dashboard API
 
 A NestJS-powered API that provides dashboard data by aggregating datasets from multiple ministries. This project is structured to ensure performance, security, and scalability. It uses Axios for HTTP requests, and Joi and ConfigService for environment configuration validation.
-
+Typescript, Node.js Based 
 ## Table of Contents
 1. [Project Overview](#project-overview)
 2. [Features](#features)
@@ -22,9 +22,13 @@ and retry logic to ensure reliability.
 
 ## API Request Approach for Fetching Ministries Data
 
+### Language of choice Typescript (Nest.js)
+
+I chose TypeScript for its seamless integration with JavaScript, offering strong typing and simplicity, similar to Kotlin and Java. While I could have used Java or Kotlin, TypeScript with NestJS provides a more lightweight, less boilerplate, and faster development experience for this project.
+
 ### Initially
 
-I aimed to send a single request to fetch data for multiple ministries and their subordinates by sending multiple query parameters in the request URL.
+I aimed to send a single request to fetch data for multiple ministries and their subordinates by sending multiple query parameters in the request URL. 
 For example, we attempted the following API call with two ministries: `https://demo.ckan.org/api/3/action/package_search?q=Bundesamt%20f%C3%BCr%20Justiz&q=Deutsches%20Patent-%20und%20Markenamt`
 However, this approach consistently returned 0 results.
 After some investigation, we found that CKAN’s `package_search` API does not support searching with multiple `q` parameters for different entities in a single request.
