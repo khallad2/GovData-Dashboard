@@ -207,7 +207,9 @@ yarn test:e2e
 
 ### If I have more time:
 - Enhance streamDashboardData function to improve readability, maintainability, performance.
-- Implement rate-limiting (throttling) for requests: which would further protect against potential DoS attacks,
+- Implement Authentication via middleware.
+- Implement rate-limiting (throttling) for requests: which would further protect against potential DoS attacks.
   especially if this service were exposed to the public.
 - Caching can be made more sophisticated with a TTL (Time To Live) to avoid stale data for ministries that might update frequently.
 - Investigate: In the retry logic, increasing the delay exponentially on each retry could make the system more resilient to network outages, but there is a risk of delaying too much.
+- Implement interceptor to modify both the request and response, handle caching, transformation, logging response times.
